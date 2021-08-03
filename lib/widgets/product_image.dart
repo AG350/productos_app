@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:productos_app/refactors/refactors.dart';
 
 class ProductImage extends StatelessWidget {
+  final String? imgUrl;
+
+  const ProductImage({Key? key, this.imgUrl}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -18,10 +22,8 @@ class ProductImage extends StatelessWidget {
             topLeft: Radius.circular(45),
             topRight: Radius.circular(45),
           ),
-          child: FadeInImage(
-            placeholder: AssetImage('assets/jar-loading.gif'),
-            image: NetworkImage('https://via.placeholder.com/400x300/green'),
-            fit: BoxFit.cover,
+          child: ImageByPass(
+            imageUrl: imgUrl,
           ),
         ),
       ),
