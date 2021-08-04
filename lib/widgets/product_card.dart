@@ -87,7 +87,7 @@ class _NotAvailable extends StatelessWidget {
 }
 
 class _PriceTag extends StatelessWidget {
-  final String price;
+  final double price;
 
   const _PriceTag(
     this.price,

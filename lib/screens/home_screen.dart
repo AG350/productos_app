@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:productos_app/screens/screens.dart';
 import 'package:productos_app/services/services.dart';
+import 'package:productos_app/models/models.dart';
 import 'package:productos_app/widgets/widgets.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -18,12 +19,9 @@ class HomeScreen extends StatelessWidget {
         itemCount: productsService.products.length,
         itemBuilder: (BuildContext context, int index) => GestureDetector(
           onTap: () {
-            productsService.selectedProduct = productsService.products[index];
-            Navigator.pushNamed(
-              context,
-              'product',
-              arguments: productsService.products[index],
-            );
+            productsService.selectedProduct =
+                productsService.products[index].copy();
+            Navigator.pushNamed(context, 'product');
           },
           child: ProductCard(
             product: productsService.products[index],
@@ -32,7 +30,14 @@ class HomeScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
-        onPressed: () {},
+        onPressed: () {
+          productsService.selectedProduct = new Product(
+            available: false,
+            name: '',
+            price: 0,
+          );
+          Navigator.pushNamed(context, 'product');
+        },
       ),
     );
   }

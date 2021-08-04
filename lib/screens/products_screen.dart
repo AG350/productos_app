@@ -1,35 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:productos_app/models/models.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+//
+import 'package:provider/provider.dart';
+import 'package:productos_app/providers/product_form_provider.dart';
+//
 import 'package:productos_app/services/services.dart';
+//
 import 'package:productos_app/ui/input_decorations.dart';
 import 'package:productos_app/widgets/widgets.dart';
-import 'package:provider/provider.dart';
 
 class ProductScreen extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     final productService = Provider.of<ProductsService>(context);
-    final Product product =
-        ModalRoute.of(context)!.settings.arguments as Product;
+    return ChangeNotifierProvider(
+      create: (_) => ProductFormProvider(productService.selectedProduct),
+      child: _ProductFormBody(productService: productService),
+    );
+  }
+}
+
+class _ProductFormBody extends StatelessWidget {
+  const _ProductFormBody({
+    Key? key,
+    required this.productService,
+  }) : super(key: key);
+
+  final ProductsService productService;
+
+  @override
+  Widget build(BuildContext context) {
+    final productForm = Provider.of<ProductFormProvider>(context);
     return Scaffold(
       body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           children: [
             Stack(
               children: [
-                ProductImage(imgUrl: product.picture),
-                Positioned(
-                  top: 60,
-                  left: 20,
-                  child: IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 40,
-                        color: Colors.white,
-                      )),
-                ),
+                ProductImage(imgUrl: productService.selectedProduct.picture),
                 Positioned(
                   top: 60,
                   left: 20,
@@ -45,7 +55,21 @@ class ProductScreen extends StatelessWidget {
                   top: 60,
                   right: 25,
                   child: IconButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final picker = new ImagePicker();
+                        final XFile? pickedFile = await picker.pickImage(
+                          source: ImageSource.gallery,
+                          imageQuality: 100,
+                        );
+                        if (pickedFile == null) {
+                          print('no selecciono nada');
+                          return;
+                        }
+
+                        print('Tenemos imagen ${pickedFile.path}');
+                        productService
+                            .updateSelectedProductImage(pickedFile.path);
+                      },
                       icon: Icon(
                         Icons.camera_alt_sharp,
                         size: 40,
@@ -54,9 +78,7 @@ class ProductScreen extends StatelessWidget {
                 ),
               ],
             ),
-            _ProductForm(
-              product: product,
-            ),
+            _ProductForm(),
             SizedBox(
               height: 100,
             )
@@ -65,21 +87,29 @@ class ProductScreen extends StatelessWidget {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.save_outlined),
-        onPressed: () {
-          //TODO: Guardar productos
-        },
+        child: productService.isSaving
+            ? CircularProgressIndicator(
+                color: Colors.white,
+              )
+            : Icon(Icons.save_outlined),
+        onPressed: productService.isSaving
+            ? null
+            : () async {
+                if (!productForm.isValidForm()) return;
+                final String? imageUrl = await productService.uploadImage();
+                if (imageUrl != null) productForm.product.picture = imageUrl;
+                await productService.saveOrCreateProduct(productForm.product);
+              },
       ),
     );
   }
 }
 
 class _ProductForm extends StatelessWidget {
-  final Product product;
-
-  const _ProductForm({Key? key, required this.product}) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    final productFormProvider = Provider.of<ProductFormProvider>(context);
+    final product = productFormProvider.product;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 10),
       child: Container(
@@ -87,40 +117,56 @@ class _ProductForm extends StatelessWidget {
         width: double.infinity,
         decoration: _buildBoxDecorations(),
         child: Form(
-            child: Column(
-          children: [
-            SizedBox(
-              height: 10,
-            ),
-            TextField(
-              controller: _genericTextEditing(product.name),
-              decoration: InputDecorations.authInputDecorations(
-                hintText: 'Nombre del producto',
-                labelText: 'Nombre:',
+          key: productFormProvider.formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 10,
               ),
-            ),
-            SizedBox(
-              height: 30,
-            ),
-            TextField(
-              controller: _genericTextEditing(product.price),
-              keyboardType: TextInputType.number,
-              decoration: InputDecorations.authInputDecorations(
-                hintText: '\$150,00',
-                labelText: 'Precio:',
+              TextFormField(
+                initialValue: product.name,
+                onChanged: (value) => product.name = value,
+                validator: (value) {
+                  if (value == null || value.length == 0) {
+                    return ' El nombre es obligatorio';
+                  }
+                },
+                decoration: InputDecorations.authInputDecorations(
+                  hintText: 'Nombre del producto',
+                  labelText: 'Nombre:',
+                ),
               ),
-            ),
-            SizedBox(
-              height: 30,
-            ),
-            SwitchListTile.adaptive(
-              value: product.available,
-              title: Text('Disponible'),
-              activeColor: Colors.indigo,
-              onChanged: (value) {},
-            ),
-          ],
-        )),
+              SizedBox(
+                height: 30,
+              ),
+              TextFormField(
+                initialValue: product.price.toString(),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                      RegExp(r'^(\d+)?\.?\d{0,2}')),
+                ],
+                onChanged: (value) => double.tryParse(value) == null
+                    ? product.price = 0
+                    : product.price = double.parse(value),
+                keyboardType: TextInputType.number,
+                decoration: InputDecorations.authInputDecorations(
+                  hintText: '\$150,00',
+                  labelText: 'Precio:',
+                ),
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              SwitchListTile.adaptive(
+                value: product.available,
+                title: Text('Disponible'),
+                activeColor: Colors.indigo,
+                onChanged: productFormProvider.updateAvailability,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -137,10 +183,4 @@ class _ProductForm extends StatelessWidget {
                 offset: Offset(0, 5),
                 blurRadius: 7)
           ]);
-}
-
-TextEditingController _genericTextEditing(String text) {
-  final TextEditingController _txtController = TextEditingController();
-  _txtController.value = TextEditingValue(text: text);
-  return _txtController;
 }
