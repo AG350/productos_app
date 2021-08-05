@@ -58,7 +58,7 @@ class _ProductFormBody extends StatelessWidget {
                       onPressed: () async {
                         final picker = new ImagePicker();
                         final XFile? pickedFile = await picker.pickImage(
-                          source: ImageSource.gallery,
+                          source: ImageSource.camera,
                           imageQuality: 100,
                         );
                         if (pickedFile == null) {

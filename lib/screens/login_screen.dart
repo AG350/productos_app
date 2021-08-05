@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:productos_app/providers/login_form_provider.dart';
 import 'package:provider/provider.dart';
-
-import 'dart:ui';
+//
+import 'package:productos_app/providers/providers.dart';
+import 'package:productos_app/services/services.dart';
+//
 import 'package:productos_app/ui/input_decorations.dart';
 import 'package:productos_app/widgets/widgets.dart';
 
@@ -10,46 +11,49 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: AuthBackground(
-            child: SingleChildScrollView(
-      child: Column(
-        children: [
-          SizedBox(height: 250),
-          CardContainer(
-            child: Column(
-              children: [
-                SizedBox(height: 10),
-                Text('Login', style: Theme.of(context).textTheme.headline4),
-                SizedBox(height: 30),
-                ChangeNotifierProvider(
-                  create: (_) => LoginFormProvider(),
-                  child: _LoginForm(),
-                )
-              ],
-            ),
-          ),
-          SizedBox(height: 50),
-          TextButton(
-            onPressed: () =>
-                Navigator.pushReplacementNamed(context, 'register'),
-            style: ButtonStyle(
-              shape: MaterialStateProperty.all(StadiumBorder()),
-              overlayColor: MaterialStateProperty.all(
-                Colors.indigo.withOpacity(0.1),
+      body: AuthBackground(
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          child: Column(
+            children: [
+              SizedBox(height: 250),
+              CardContainer(
+                child: Column(
+                  children: [
+                    SizedBox(height: 10),
+                    Text('Login', style: Theme.of(context).textTheme.headline4),
+                    SizedBox(height: 30),
+                    ChangeNotifierProvider(
+                      create: (_) => LoginFormProvider(),
+                      child: _LoginForm(),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            child: Text(
-              'Crear una nueva cuenta',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.black87,
+              SizedBox(height: 50),
+              TextButton(
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, 'register'),
+                style: ButtonStyle(
+                  shape: MaterialStateProperty.all(StadiumBorder()),
+                  overlayColor: MaterialStateProperty.all(
+                    Colors.indigo.withOpacity(0.1),
+                  ),
+                ),
+                child: Text(
+                  'Crear una nueva cuenta',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
-            ),
+              SizedBox(height: 50),
+            ],
           ),
-          SizedBox(height: 50),
-        ],
+        ),
       ),
-    )));
+    );
   }
 }
 
@@ -116,15 +120,23 @@ class _LoginForm extends StatelessWidget {
                   ? null
                   : () async {
                       FocusScope.of(context).unfocus();
+                      final authService =
+                          Provider.of<AuthService>(context, listen: false);
+
                       if (!loginForm.isValidForm()) return;
 
                       loginForm.isLoading = true;
+                      final String? message = await authService.login(
+                          loginForm.email, loginForm.password);
 
-                      await Future.delayed(Duration(seconds: 1));
-
-                      loginForm.isLoading = true;
-
-                      Navigator.pushReplacementNamed(context, 'home');
+                      if (message == null) {
+                        Navigator.pushReplacementNamed(context, 'home');
+                      } else {
+                        //TODO: mostrar erro en pantalla
+                        print(message);
+                        NotificationsServices.showSnackBar(message);
+                        loginForm.isLoading = false;
+                      }
                     })
         ],
       ),
